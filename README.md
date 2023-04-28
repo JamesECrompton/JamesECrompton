@@ -2,7 +2,7 @@
 - 👀 I’m a software developer at Microsoft
 - 🌱 I’m currently learning python, AI, tkinter
 - 💞️ I’m looking to collaborate on anything fun
-- 📫 james.crompton@microsoft.com
+- 📫 james_cromp@hotmail.com
 
 <!---
 JamesECrompton/JamesECrompton is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.

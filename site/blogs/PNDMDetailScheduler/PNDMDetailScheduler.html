@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>James Crompton Project Blog</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="../../css/main.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <!-- Wrap the rest of the page in another container to center all the content. -->
+
+    <div class="container">
+      <Table>
+        <TR>
+          <TD></TD>          
+          <TD colspan="3">
+            <h2>Improving Generation Speed and Quality of Stable Diffusion Images</h2>
+            <p>Stable Diffusion provides a number of nobs to tweak the image generation process. I did some investigations around schedulers and wanted to share my findings here as you can gain drastically better images by using a good scheduler.</p>
+            <p>By default Stable Diffusion uses a PNDMScheduler which does produce fairly high quality images, but takes many steps before the quality is high. The best scheduler Stable Diffusion currently has, in my opinion, is the UniPCMultistepScheduler which gives much better results
+              even at low step counts. The final images are very high quality and I strongly recommend trying the UniPCMultistepScheduler. In an effort to learn this area, I spent some time on the PNDMScheduler and with some algorithmic modifications I 
+              gained drastically improved results, much closer to UniPCMultistepScheduler and in some cases exceeding.
+
+              I have named my new scheduler the PNDMDetailScheduler as it uses almost the same algorithm as the PNDMScheduler, but with each step it aggressively prioritizes converging on details for the image. It also converges the image quickly when at low step counts to get the best guess consistent image rather than an unusable artifact ridden image. I will go through a few of my test results and then cover the scheduler code, algorithm, how it works and how to use it yourself.
+            </p>
+          </TD>
+        </TR>
+        <TR>
+          <TD></TD>
+          <TD align="center"><h3>PNDMScheduler</h3></TD>
+          <TD align="center"><h3>PNDMDetailScheduler</h3></TD>
+          <TD align="center"><h3>UniPCMultistepScheduler</h3></TD>
+        </TR>
+        <TR>          
+          <TD>At 12 steps the difference between the default PNDMScheduler and my PNDMDetailScheduler are drastic. Both the PNDMDetailScheduler and the UniPCMultistepScheduler have produced high quality images quickly. The detailed scheduler has a slightly sharper image and is a little closer to the prompt.</TD>
+          <TD><img src="img/pr7_12_Base.png" title="12 steps:cute girl,Illustration,Wavy Dark Brown hair,Blue Dress with White trim,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr7_12_Detail.png" title="12 steps:cute girl,Illustration,Wavy Dark Brown hair,Blue Dress with White trim,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr7_12_Uni.png" title="12 steps:cute girl,Illustration,Wavy Dark Brown hair,Blue Dress with White trim,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+        </TR>
+        <TR>
+          <TD><p>As the step count increases to 50 the default PNDMScheduler has caught up and created a beautiful image. The detailed scheduler has increased details on the walls, buildings, clothes and skin. The Uni scheduler has created a beautiful image with details similar to my PNDMDetailScheduler. The Detail scheduler's image does not have the slight blur effect of PNDMScheduler and the UniPCMultistepScheduler. Some people may like it better and some people may feel it is over sharpened.</p></TD>
+          <TD><img src="img/pr7_50_Base.png" title="50 steps:cute girl,Illustration,Wavy Dark Brown hair,Blue Dress with White trim,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr7_50_Detail.png" title="50 steps:cute girl,Illustration,Wavy Dark Brown hair,Blue Dress with White trim,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr7_50_Uni.png" title="50 steps:cute girl,Illustration,Wavy Dark Brown hair,Blue Dress with White trim,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+        </TR>
+        <TR>
+          <TD><p>Trying with a more anime art style we can see that after only 12 steps we have a consistent image with the detail scheduler, which is much better than the origial PNDMScheduler, however the colors appear a bit off and the style is slightly different than expected. The Uni scheduler has already produced a suprerior image at this point.</p></TD>
+          <TD><img src="img/pr1_12_Base.png" title="12 steps:house on a hill,Tilt Blur,Graffiti Paint,Charming,Studio Ghibli"></TD>
+          <TD><img src="img/pr1_12_Detail.png" title="12 steps:house on a hill,Tilt Blur,Graffiti Paint,Charming,Studio Ghibli"></TD>
+          <TD><img src="img/pr1_12_Uni.png" title="12 steps:house on a hill,Tilt Blur,Graffiti Paint,Charming,Studio Ghibli"></TD>
+        </TR>
+        <TR>
+          <TD><p>Moving up to 50 steps, all three images look fairly good, but none look amazing. Uni's image is a bit more detailed at 50 steps but not clearly better than it was at 12. Overall Uni seems the best for this art style.</p></TD>
+          <TD><img src="img/pr1_50_Base.png" title="50 steps:house on a hill,Tilt Blur,Graffiti Paint,Charming,Studio Ghibli"></TD>
+          <TD><img src="img/pr1_50_Detail.png" title="50 steps:house on a hill,Tilt Blur,Graffiti Paint,Charming,Studio Ghibli"></TD>
+          <TD><img src="img/pr1_50_Uni.png" title="50 steps:house on a hill,Tilt Blur,Graffiti Paint,Charming,Studio Ghibli"></TD>
+        </TR>
+        <TR>
+          <TD><p>Trying something completely different I tested rabbit puppet images with 30 steps in a sprite sheet of panels where there are many subjects. This was the one trial where the Uni scheduler really failed. It created the same image many times rather than a unique bunny for each sprite, and they all look bad. The default scheduler is fair but the face looks indistinct. The Detailed scheduler is the clear winner but the mouth is not great on any puppet, the eyes and ears are far ahead of the competition and each image is slightly different.</p></TD>
+          <TD><img src="img/pr4_30_Base.png" title="30 steps:Sprite sheet, cute baby bunny doll puppet, exploring, Watercolor Clipart, strybk, full Illustration, 4k, sharp focus, watercolor, smooth soft skin, symmetrical, soft lighting, detailed face, concept art, muted colors, watercolor style, strybk, children's style fairy tales, chibi kawaii, . Octane rendering, 3d. Perfect face, detailed face, delicate face, perfect sharp lips, detailed eyes. Craig Davison, Aubrey Beardsley, Conrad Roset, Aikut Aidogdu, Agnes Cecil, watercolor style"></TD>
+          <TD><img src="img/pr4_30_Detail.png" title="30 steps:Sprite sheet, cute baby bunny doll puppet, exploring, Watercolor Clipart, strybk, full Illustration, 4k, sharp focus, watercolor, smooth soft skin, symmetrical, soft lighting, detailed face, concept art, muted colors, watercolor style, strybk, children's style fairy tales, chibi kawaii, . Octane rendering, 3d. Perfect face, detailed face, delicate face, perfect sharp lips, detailed eyes. Craig Davison, Aubrey Beardsley, Conrad Roset, Aikut Aidogdu, Agnes Cecil, watercolor style"></TD>
+          <TD><img src="img/pr4_30_Uni.png" title="30 steps:Sprite sheet, cute baby bunny doll puppet, exploring, Watercolor Clipart, strybk, full Illustration, 4k, sharp focus, watercolor, smooth soft skin, symmetrical, soft lighting, detailed face, concept art, muted colors, watercolor style, strybk, children's style fairy tales, chibi kawaii, . Octane rendering, 3d. Perfect face, detailed face, delicate face, perfect sharp lips, detailed eyes. Craig Davison, Aubrey Beardsley, Conrad Roset, Aikut Aidogdu, Agnes Cecil, watercolor style"></TD>
+        </TR>
+        <TR>
+          <TD><p>Moving on to celebrity tests, i used the most popular Emma Watson face with 22 steps. The default scheduler has many artifacts and is unusable at this step count. My detail scheduler did quite well producing a good image. The Uni scheduler made a high quality image but with an unusual sheering of the image. In further image tests this sheering occurred rarely and the uni image often looked great.</p></TD>
+          <TD><img src="img/pr2_22_Base.png" title="22 steps:emma watson as cute young Russian,Watercolor Painting,Braided Cream hair,Navy Blue eyes,Champagne Pink and blue Dress,Dynamic Lighting,Intricate Details,Intricately Detailed,Full of Color,Beautiful,Cgsociety,Depth of Field"></TD>
+          <TD><img src="img/pr2_22_Detail.png" title="22 steps:emma watson as cute young Russian,Watercolor Painting,Braided Cream hair,Navy Blue eyes,Champagne Pink and blue Dress,Dynamic Lighting,Intricate Details,Intricately Detailed,Full of Color,Beautiful,Cgsociety,Depth of Field"></TD>
+          <TD><img src="img/pr2_22_Uni.png" title="22 steps:emma watson as cute young Russian,Watercolor Painting,Braided Cream hair,Navy Blue eyes,Champagne Pink and blue Dress,Dynamic Lighting,Intricate Details,Intricately Detailed,Full of Color,Beautiful,Cgsociety,Depth of Field"></TD>
+        </TR>
+        <TR>
+          <TD><p>Moving up to 40 steps, the default PNDMScheduler is still producing poor quality images with artifacts in the face. The Detailed scheduler looks about as good as it did at 22 steps and the uni scheduler has improved a bunch.</p></TD>
+          <TD><img src="img/pr2_40_Base.png" title="40 steps:emma watson as cute young Russian,Watercolor Painting,Braided Cream hair,Navy Blue eyes,Champagne Pink and blue Dress,Dynamic Lighting,Intricate Details,Intricately Detailed,Full of Color,Beautiful,Cgsociety,Depth of Field"></TD>
+          <TD><img src="img/pr2_40_Detail.png" title="40 steps:emma watson as cute young Russian,Watercolor Painting,Braided Cream hair,Navy Blue eyes,Champagne Pink and blue Dress,Dynamic Lighting,Intricate Details,Intricately Detailed,Full of Color,Beautiful,Cgsociety,Depth of Field"></TD>
+          <TD><img src="img/pr2_40_Uni.png" title="40 steps:emma watson as cute young Russian,Watercolor Painting,Braided Cream hair,Navy Blue eyes,Champagne Pink and blue Dress,Dynamic Lighting,Intricate Details,Intricately Detailed,Full of Color,Beautiful,Cgsociety,Depth of Field"></TD>
+        </TR>
+        <TR>
+          <TD><p>Moving on to a Male fisherman Angel at 12 steps, we see the consistent problem with the default PNDMScheduler at low step counts, the image is unusable with artifacts. The Detailed scheduler and the Uni scheduler both have high quality images. The detailed scheduler has messed up and removed the shirt above the necklace line. The Uni scheduler has messed up and placed the man's nipples outside the shirt.</p></TD>
+          <TD><img src="img/pr8_12_Base.png" title="12 steps:angel male fisherman ,long braided black hair, detailed face, character sheet, full body, full head, sea , brown white clothes, blue bird, detailed face, full body, hyperdetailed painting, luminism, Bar lighting, complex, 4k resolution concept art portrait by Greg Rutkowski, Artgerm, WLOP, Alphonse Mucha, little fusion pojatti realistic goth, fractal isometrics details bioluminescens : a stunning realistic photograph 30 year"></TD>
+          <TD><img src="img/pr8_12_Detail.png" title="12 steps:angel male fisherman ,long braided black hair, detailed face, character sheet, full body, full head, sea , brown white clothes, blue bird, detailed face, full body, hyperdetailed painting, luminism, Bar lighting, complex, 4k resolution concept art portrait by Greg Rutkowski, Artgerm, WLOP, Alphonse Mucha, little fusion pojatti realistic goth, fractal isometrics details bioluminescens : a stunning realistic photograph 30 year"></TD>
+          <TD><img src="img/pr8_12_Uni.png" title="12 steps:angel male fisherman ,long braided black hair, detailed face, character sheet, full body, full head, sea , brown white clothes, blue bird, detailed face, full body, hyperdetailed painting, luminism, Bar lighting, complex, 4k resolution concept art portrait by Greg Rutkowski, Artgerm, WLOP, Alphonse Mucha, little fusion pojatti realistic goth, fractal isometrics details bioluminescens : a stunning realistic photograph 30 year" ></TD>
+        </TR>
+        <TR>
+          <TD><p>Moving up to 50 steps, all three images look good and the best depends on the style one is looking for. The Detailed scheduler has messed up a little by removing the wings and instead morphing them into a water distortion. The wings are looking worse with both the PNDMScheduler and the Uni scheduler and disappear sometimes at even higher step levels.</p></TD>
+          <TD><img src="img/pr8_50_Base.png" title="50 steps:angel male fisherman ,long braided black hair, detailed face, character sheet, full body, full head, sea , brown white clothes, blue bird, detailed face, full body, hyperdetailed painting, luminism, Bar lighting, complex, 4k resolution concept art portrait by Greg Rutkowski, Artgerm, WLOP, Alphonse Mucha, little fusion pojatti realistic goth, fractal isometrics details bioluminescens : a stunning realistic photograph 30 year"></TD>
+          <TD><img src="img/pr8_50_Detail.png" title="50 steps:angel male fisherman ,long braided black hair, detailed face, character sheet, full body, full head, sea , brown white clothes, blue bird, detailed face, full body, hyperdetailed painting, luminism, Bar lighting, complex, 4k resolution concept art portrait by Greg Rutkowski, Artgerm, WLOP, Alphonse Mucha, little fusion pojatti realistic goth, fractal isometrics details bioluminescens : a stunning realistic photograph 30 year"></TD>
+          <TD><img src="img/pr8_50_Uni.png" title="50 steps:angel male fisherman ,long braided black hair, detailed face, character sheet, full body, full head, sea , brown white clothes, blue bird, detailed face, full body, hyperdetailed painting, luminism, Bar lighting, complex, 4k resolution concept art portrait by Greg Rutkowski, Artgerm, WLOP, Alphonse Mucha, little fusion pojatti realistic goth, fractal isometrics details bioluminescens : a stunning realistic photograph 30 year"></TD>
+        </TR>
+        <TR>
+          <TD><p>Trying out scenery at 12 steps, once again the base PNDMScheduler's image is unusable. The Detailed and Uni schedulers have created good images. The Uni scheduler has done a bit better at keeping the lotus part of the prompt and the detailed scheduler has created a prettier river through the pods as they look chaotic and less interesting in the uni image.</p></TD>
+          <TD><img src="img/pr2_12_Base.png" title="12 steps:Lotus Pond, Ninh Binh landscape, Vietnam, Tam Coc, Bich Dong, karst topography, centered, symmetry, painted, intricate, volumetric lighting, beautiful, rich deep colors masterpiece, sharp focus, ultra-detailed, in the style of dan mumford and marc simonetti, astrophotography, bright moonlight."></TD>
+          <TD><img src="img/pr2_12_Detail.png" title="12 steps:Lotus Pond, Ninh Binh landscape, Vietnam, Tam Coc, Bich Dong, karst topography, centered, symmetry, painted, intricate, volumetric lighting, beautiful, rich deep colors masterpiece, sharp focus, ultra-detailed, in the style of dan mumford and marc simonetti, astrophotography, bright moonlight."></TD>
+          <TD><img src="img/pr2_12_Uni.png" title="12 steps:Lotus Pond, Ninh Binh landscape, Vietnam, Tam Coc, Bich Dong, karst topography, centered, symmetry, painted, intricate, volumetric lighting, beautiful, rich deep colors masterpiece, sharp focus, ultra-detailed, in the style of dan mumford and marc simonetti, astrophotography, bright moonlight."></TD>
+        </TR>
+        <TR>
+          <TD><p>The same scenery at 60 steps now has great results from all three schedulers. I still like the detailed sceheduler's results here slightly better than the rest with more flowers, coves and little details and the clouds seem to pop more.</p></TD>
+          <TD><img src="img/pr2_60_Base.png" title="60 steps:Lotus Pond, Ninh Binh landscape, Vietnam, Tam Coc, Bich Dong, karst topography, centered, symmetry, painted, intricate, volumetric lighting, beautiful, rich deep colors masterpiece, sharp focus, ultra-detailed, in the style of dan mumford and marc simonetti, astrophotography, bright moonlight."></TD>
+          <TD><img src="img/pr2_60_Detail.png" title="60 steps:Lotus Pond, Ninh Binh landscape, Vietnam, Tam Coc, Bich Dong, karst topography, centered, symmetry, painted, intricate, volumetric lighting, beautiful, rich deep colors masterpiece, sharp focus, ultra-detailed, in the style of dan mumford and marc simonetti, astrophotography, bright moonlight."></TD>
+          <TD><img src="img/pr2_60_Uni.png" title="60 steps:Lotus Pond, Ninh Binh landscape, Vietnam, Tam Coc, Bich Dong, karst topography, centered, symmetry, painted, intricate, volumetric lighting, beautiful, rich deep colors masterpiece, sharp focus, ultra-detailed, in the style of dan mumford and marc simonetti, astrophotography, bright moonlight."></TD>
+        </TR>
+        <TR>
+          <TD><p>Testing now with a monochrome background prompt at 15 steps, we can see the PNDMScheduler and PNDMDetailScheduler have not yet removed the background completely, but the Uni scheduler is already there. The Uni scheduler has discolored one of the eyes but the image looks great overall for 15 steps. The detailed scheduler has more details, but we don't want the details in the background per the prompt so its fighting the scheduler's nature</p></TD>
+          <TD><img src="img/pr0_15_Base.png" title="15 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr0_15_Detail.png" title="15 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr0_15_Uni.png" title="15 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+        </TR>
+        <TR>
+          <TD><p>By 25 steps all three schedulers have achieved a monochrome background per the prompt. All images look good, and I slightly prefer the default PNDMScheduler result in this case as the color choices contrast better with the monochrome background.</p></TD>
+          <TD><img src="img/pr0_25_Base.png" title="25 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr0_25_Detail.png" title="25 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr0_25_Uni.png" title="25 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+        </TR>
+        <TR>
+          <TD><p>By 50 steps all three schedulers have pushed some of the monochrome coloring into the subject model making it look slightly worse. Also the default PNDMScheduler and the UniPCMultistepScheduler have messed up one eye. In Uni's case it looks like the skin around her eye is red. In the default scheduler case it looks like one eye is the wrong size. Monochrome backgrounds seem to be a challenge still for all these schedulers, the results are good but could be better</p></TD>
+          <TD><img src="img/pr0_50_Base.png" title="50 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr0_50_Detail.png" title="50 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+          <TD><img src="img/pr0_50_Uni.png" title="50 steps:cute girl,Illustration,Wavy Dark Long Brown hair,Blue Dress with White trim,monochrome background,cinematic,Fashion Shoot,Detailed,8k,Concept Art,Highly Detailed,Awesome,Full Color,Approaching Perfection,Sharp Soft Focus,Beautiful,Artstation,Centered"></TD>
+        </TR>
+        <TR>
+          <TD><p>Trying with lowres 3d rendering style for dinosaurs at 12 steps. The default scheduler is its usual artifact ridden mess at these low step rates. The detailed scheduler has created some bad artifacts such as a white streak near the raised leg and a flesh line in the mouth. The Uni scheduler image quality is good but the subject is partially cropped off screen and one leg is shrivled. </p></TD>
+          <TD><img src="img/pr0_12_Base.png" title="12 steps:Dinosaur in prehistoric times, cinematic lighting, wide angle, lowres 3d render"></TD>
+          <TD><img src="img/pr0_12_Detail.png" title="12 steps:Dinosaur in prehistoric times, cinematic lighting, wide angle, lowres 3d render"></TD>
+          <TD><img src="img/pr0_12_Uni.png" title="12 steps:Dinosaur in prehistoric times, cinematic lighting, wide angle, lowres 3d render"></TD>
+        </TR>
+        <TR>
+          <TD><p>Another test for artistic styles with landscapes at 50 steps shows good results for all schedulers, however the detailed scheduler has produced, in my opinion, the best image with more interesting flowers, a deck and details in the sky.</p></TD>
+          <TD><img src="img/pr3_50_Base.png" title="50 steps:A blazing sun radiating its golden rays across a tranquil lake. Splash art, a stunning happy landscape, epic Instagram, artstation, splash style of greenful paint, contour, hyperdetailed intricately detailed, unreal engine 5, fantastical, intricate detail, splash screen, complementary colors, natural concept art, 8k resolution, deviantart masterpiece, oil painting, heavy strokes, paint dripping, splash arts"></TD>
+          <TD><img src="img/pr3_50_Detail.png" title="50 steps:A blazing sun radiating its golden rays across a tranquil lake. Splash art, a stunning happy landscape, epic Instagram, artstation, splash style of greenful paint, contour, hyperdetailed intricately detailed, unreal engine 5, fantastical, intricate detail, splash screen, complementary colors, natural concept art, 8k resolution, deviantart masterpiece, oil painting, heavy strokes, paint dripping, splash arts"></TD>
+          <TD><img src="img/pr3_50_Uni.png" title="50 steps:A blazing sun radiating its golden rays across a tranquil lake. Splash art, a stunning happy landscape, epic Instagram, artstation, splash style of greenful paint, contour, hyperdetailed intricately detailed, unreal engine 5, fantastical, intricate detail, splash screen, complementary colors, natural concept art, 8k resolution, deviantart masterpiece, oil painting, heavy strokes, paint dripping, splash arts"></TD>
+        </TR>
+        <TR>
+          <TD><p>Finally testing with highly detailed prompts with a woman painting art at 18 steps, Uni makes a very beautiful image other than some hand anomolies and the head suddenly changing color mid way up the neck. The Detailed scheduler is quite pretty as well but the face has some distortion and the clothes are inconsistent and missing near one thigh.</p></TD>
+          <TD><img src="img/pr4_18_Base.png" title="18 steps:photorealistic beautiful woman, creating art, messy brown hair, beggar, full body, cover, hyperdetailed painting, luminism, Bar lighting, complex, ancient greek clothes, messy brown old clothes, 4k resolution concept art, Artgerm, WLOP, Alphonse Mucha, 3d render, octane render, intricately detailed, cinematic, trending on artstation, realistic mucha, klimt, erte .12k, intricate. hit definition , cinematic,Rough sketch, mix of bold dark lines and loose lines, bold lines, Full body."></TD>
+          <TD><img src="img/pr4_18_Detail.png" title="18 steps:photorealistic beautiful woman, creating art, messy brown hair, beggar, full body, cover, hyperdetailed painting, luminism, Bar lighting, complex, ancient greek clothes, messy brown old clothes, 4k resolution concept art, Artgerm, WLOP, Alphonse Mucha, 3d render, octane render, intricately detailed, cinematic, trending on artstation, realistic mucha, klimt, erte .12k, intricate. hit definition , cinematic,Rough sketch, mix of bold dark lines and loose lines, bold lines, Full body."></TD>
+          <TD><img src="img/pr4_18_Uni.png" title="18 steps:photorealistic beautiful woman, creating art, messy brown hair, beggar, full body, cover, hyperdetailed painting, luminism, Bar lighting, complex, ancient greek clothes, messy brown old clothes, 4k resolution concept art, Artgerm, WLOP, Alphonse Mucha, 3d render, octane render, intricately detailed, cinematic, trending on artstation, realistic mucha, klimt, erte .12k, intricate. hit definition , cinematic,Rough sketch, mix of bold dark lines and loose lines, bold lines, Full body."></TD>
+        </TR>
+        <TR>
+          <TD><p>With this prompt at 50 steps, the default scheduler has really improved and is looking the best, although one leg is drawn at a wrong angle. The detail scheduler has created a detailed artwork the woman has made and is good overall but the face still looks slightly wrong, the feet have extra digits and is blurry with half a sandle drawn on her. The Uni scheduler has actually gotten worse and completely mangled the face.</p></TD>
+          <TD><img src="img/pr4_50_Base.png" title="50 steps:photorealistic beautiful woman, creating art, messy brown hair, beggar, full body, cover, hyperdetailed painting, luminism, Bar lighting, complex, ancient greek clothes, messy brown old clothes, 4k resolution concept art, Artgerm, WLOP, Alphonse Mucha, 3d render, octane render, intricately detailed, cinematic, trending on artstation, realistic mucha, klimt, erte .12k, intricate. hit definition , cinematic,Rough sketch, mix of bold dark lines and loose lines, bold lines, Full body."></TD>
+          <TD><img src="img/pr4_50_Detail.png" title="50 steps:photorealistic beautiful woman, creating art, messy brown hair, beggar, full body, cover, hyperdetailed painting, luminism, Bar lighting, complex, ancient greek clothes, messy brown old clothes, 4k resolution concept art, Artgerm, WLOP, Alphonse Mucha, 3d render, octane render, intricately detailed, cinematic, trending on artstation, realistic mucha, klimt, erte .12k, intricate. hit definition , cinematic,Rough sketch, mix of bold dark lines and loose lines, bold lines, Full body."></TD>
+          <TD><img src="img/pr4_50_Uni.png" title="50 steps:photorealistic beautiful woman, creating art, messy brown hair, beggar, full body, cover, hyperdetailed painting, luminism, Bar lighting, complex, ancient greek clothes, messy brown old clothes, 4k resolution concept art, Artgerm, WLOP, Alphonse Mucha, 3d render, octane render, intricately detailed, cinematic, trending on artstation, realistic mucha, klimt, erte .12k, intricate. hit definition , cinematic,Rough sketch, mix of bold dark lines and loose lines, bold lines, Full body."></TD>
+        </TR>
+	  <TR>
+          <TD></TD>          
+          <TD colspan="3">
+            <h3>How to try the scheduler</h3>
+            
+            A fork of the diffusers repo is hosted <a target="_blank" href="https://github.com/JamesECrompton/diffusers">here</a>.
+            Clone the repo and run the "test_detail_scheduler.py" script found in the root.
+
+            The code for the detail scheduler can be found <a target="_blank" href="https://github.com/JamesECrompton/diffusers/blob/main/src/diffusers/schedulers/scheduling_pndm_detail.py">here</a>
+            
+          </TD>
+        </TR>
+        <TR>
+          <TD></TD>          
+          <TD colspan="3">
+            <h3>The algorithmic changes</h3>
+            <p>The algorithm backing the default PNDMScheduler can be found in this paper <a href="https://arxiv.org/pdf/2202.09778.pdf">here</a>
+              The Detailed scheduler variant is designed for two purposes
+			<ul>
+                <li> Produce images with increased detail and sharpness at higher training step counts</li>
+                <li> Produce consistent and clean looking images at low step counts (~12) step counts.</li>
+                </ul>
+              This is accomplished by two changes to the model output calculation done in each step. In addition this scheduler requires skipping the Runge-Kutta steps defined in the original paper.
+      
+              The first change for producing images with higher detail is to maximize the differences between the sample predicted in a step and the ones predicted
+              in previous steps. Since the density distrubtion of the norm of the data converges as the step processing proceeds, always subtracting 
+              from the previous prediction is advantageous. If our mean has already converged to the goal, this will result in very little change, if it has not 
+              converged we will speed the convergence. The default approch of adding and subtracting every other sample instead of removing all previous samples results in a slightly blurred effect reducing the 
+              quality and generated detail level of the final image.
+
+              Original code:
+		<p>
+		<code>
+              elif len(self.ets) == 3:
+                model_output = (23 * self.ets[-1] - 16 * self.ets[-2] + 5 * self.ets[-3]) / 12
+              else:
+                model_output = (1 / 24) * (55 * self.ets[-1] - 59 * self.ets[-2] + 37 * self.ets[-3] - 9 * self.ets[-4])
+	      </code>
+		</p>
+              New Formula:
+		<p>
+		<code>
+              elif len(self.ets) == 3:
+                      model_output = (59 * self.ets[-1] - 23 * self.ets[-2] - 13 * self.ets[-3]) /23
+              else:
+                      model_output = (163 * self.ets[-1] - 57 * self.ets[-2] - 29 * self.ets[-3] - 11 * self.ets[-4]) /66
+              </code>
+		</p>
+              The code used to alternate between adding previous samples and removing previous samples from the current predicted sample, and now it does no adds so there is no more averaging. We also maximumally consider the difference between our current prediction and the previous ones as we should be heading in the correct direction and this will speed us on our way.
+              
+              At low step counts the density distribution of the norm of the data is wide, our current prediction will be closer to the target and we want to take more of it and less of the previous. If the previous prediction is already close to the current this won't matter as we will add as much from the current prediction as we subtract from the previous. If we are a ways away from the convergence point though, we push ourselves in the desired direction.
+		</p>
+              <img src="img/Convergence.png">
+		<p>
+              The second change for producing consistant images at low step counts (<=18) involves harnessing the above technique to speed convergence and then when we are a few steps from being done,
+              purposely do a weighted average of the last few steps to converge at an image that will appear consistent.
+              
+		<p>
+		New Code:
+		</p>
+		<p>
+		<code>
+              elif self.num_inference_steps <= 18 and self.counter == (self.num_inference_steps - 2):
+                model_output = (45 * self.ets[-1] + 28 * self.ets[-2] + 18 * self.ets[-3] - 11 * self.ets[-4]) /80
+              elif self.num_inference_steps <= 18 and self.counter == (self.num_inference_steps - 1):
+                model_output = (8 * self.ets[-1] + 2 * self.ets[-2] + 2 * self.ets[-3] + self.ets[-4]) /13
+		</code>
+		</p>
+
+              The result is a scheduler which produces a consitent image much faster than the base PNDMScheduler and almost as fast as UniPCMultistepScheduler. The final output 
+              image is sharper and more detailed then either PNDMScheduler or UniPCMultistepScheduler.
+
+            </p>
+          </TD>
+        </TR>
+      </Table>
+    </div>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
+    <script src="js/bootstrap.min.js"></script>
+  </body>
+</html>

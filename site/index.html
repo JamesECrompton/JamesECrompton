@@ -17,30 +17,29 @@
   <body>
     <!-- MOBILE MENU -->
     <nav class='header__nav' id='header__nav'>
-      <a class='header__lockup' href='https://research.google'>
-        <span class='off-screen'>James Crompton Project Blog</span>
-        <div class='header__logo'>
-          <img alt='ExMoira' src='img/ExMoira.png'/>
-        </div>
-      </a>
       <div class='header__items'>
-        <div aria-level='1' class='header__item'>
-          <a class='header__link' href='about.html'> About Me </a>
+        <div aria-level='1'>
+          <p>
+            <img alt='ExMoira' src='img/ExMoira.png' title="Ex Moira"/>
+          </p>
         </div>
         <div aria-level='1' class='header__item'>
-          <a class='header__link' href='projects.html'> Projects </a>
+          <a class='header__link' onclick='loadSubPage("about.html")'> About Me </a>
         </div>
         <div aria-level='1' class='header__item'>
-          <a class='header__link' href='resources.html'> Resources </a>
+          <a class='header__link' onclick='loadSubPage("projects.html")'> Projects </a>
         </div>
         <div aria-level='1' class='header__item'>
-          <a class='header__link' href='github.html'> GitHub </a>
+          <a class='header__link' onclick='loadSubPage("resources.html")'> Resources </a>
         </div>
         <div aria-level='1' class='header__item'>
-          <a class='header__link' href='videos.html'> Videos </a>
+          <a class='header__link' style="text-decoration:none;" href="https://github.com/JamesECrompton/diffusers"> GitHub </a>
         </div>
         <div aria-level='1' class='header__item'>
-          <a class='header__link header__link--active' href='index.html'> Blog </a>
+          <a class='header__link' onclick='loadSubPage("videos.html")'> Videos </a>
+        </div>
+        <div aria-level='1' class='header__item'>
+          <a class='header__link' onclick='loadSubPage("blogs/PNDMDetailScheduler/PNDMDetailScheduler.html")'> Blog </a>
         </div>
       </div>
     </nav>
@@ -52,7 +51,8 @@
     <!-- Placed at the end of the document so the pages load faster -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
-    <script src="js/bootstrap.min.js"></script>
-    <script>$('#blogframe').html('<object width=100% height=auto data="blogs/PNDMDetailScheduler.html">');</script>
+    <script src="js/bootstrap.min.js"></script>    
+    <script>function loadSubPage(page) {$('#blogframe').html('<object width=100% height=auto data="'+ page + '">');}</script>
+    <script>loadSubPage("blogs/PNDMDetailScheduler/PNDMDetailScheduler.html")</script>
   </body>
 </html>

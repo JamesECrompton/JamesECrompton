@@ -14,8 +14,13 @@ body {
     margin: 0;
 }
 
+td
+{
+    font-family: "Verdana";
+    font-size:14px;
+}
+
 object {
-    background-color: red;
     display: inline-block;
     width: 100vw;
     height: 100vh;

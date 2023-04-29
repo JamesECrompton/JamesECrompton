@@ -65,6 +65,11 @@
       margin: 0;
    }
  }
+.header__item:hover
+{
+    cursor: pointer;
+}
+
   .header__item:first-child {
     margin-left: 0;
  }

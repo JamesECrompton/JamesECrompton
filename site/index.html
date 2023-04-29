@@ -53,6 +53,23 @@
     <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
     <script src="js/bootstrap.min.js"></script>    
     <script>function loadSubPage(page) {$('#blogframe').html('<object width=100% height=auto data="'+ page + '">');}</script>
-    <script>loadSubPage("blogs/PNDMDetailScheduler/PNDMDetailScheduler.html")</script>
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const pageParam = urlParams.get('page');
+      const blogParam = urlParams.get('blog');
+      if (pageParam)
+      {
+        loadSubPage(pageParam)
+      }
+      else if (blogParam)
+      {
+        blogName = blogParam
+        loadSubPage("blogs/" + blogName + "/" + blogName + ".html")
+      }
+      else
+      {
+        loadSubPage("blogs/PNDMDetailScheduler/PNDMDetailScheduler.html")
+      }
+    </script>
   </body>
 </html>

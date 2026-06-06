@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Job Picker</title>
+    <link href="css/main.css" rel="stylesheet">
+    <link href="css/jobpicker.css" rel="stylesheet">
+  </head>
+  <body>
+    <div class="container">
+      <h1>Choose a Person</h1>
+
+      <div id="peopleGrid" class="people-grid" aria-label="People selector">
+        <!-- Person tiles rendered by JS -->
+      </div>
+
+      <div id="pickerPanel" class="picker-panel hidden" aria-live="polite">
+        <button id="backBtn" class="btn small">← Back</button>
+        <h2 id="pickedPerson"></h2>
+        <div class="picker-area">
+          <div id="spinner" class="spinner">Ready?</div>
+          <div class="controls">
+            <button id="chooseBtn" class="btn primary">Get Random Job</button>
+          </div>
+        </div>
+
+        <div id="bonusNotice" class="bonus hidden">Bonus Choice!</div>
+
+        <div id="resultArea" class="result-area hidden">
+          <!-- If single result (auto-accepted) -->
+          <div id="singleResult" class="single-result hidden">
+            <h3>You got:</h3>
+            <div id="singleJob" class="job-card"></div>
+          </div>
+
+          <!-- If bonus two choices -->
+          <div id="dualResult" class="dual-result hidden">
+            <h3>Pick one of these:</h3>
+            <div class="two-jobs">
+              <div id="jobA" class="job-card option"></div>
+              <div id="jobB" class="job-card option"></div>
+            </div>
+          </div>
+        </div>
+
+        <h3>History</h3>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+          <button id="clearHistoryBtn" class="btn">Clear History</button>
+        </div>
+        <div id="history" class="history"></div>
+        <div id="assignmentNotice" class="assignment hidden" style="margin-top:8px;padding:8px;border-radius:6px;background:#eef7ea;color:#184d19"></div>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="js/jobpicker.js"></script>
+  </body>
+</html>

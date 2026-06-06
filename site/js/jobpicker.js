@@ -89,6 +89,14 @@
     const notice = qs('#assignmentNotice'); if(notice) notice.classList.add('hidden');
     const spinner = qs('#spinner'); if(spinner) spinner.textContent = 'Ready?';
     renderHistory();
+    // move focus to the Get Random Job button and ensure it's visible on small screens
+    const btn = qs('#chooseBtn');
+    if(btn){
+      // small delay to allow layout changes then focus and scroll into view
+      setTimeout(()=>{
+        try{ btn.focus(); btn.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+      }, 80);
+    }
   }
 
   function filterJobsFor(personId){

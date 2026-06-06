@@ -53,9 +53,19 @@
       // create image element to avoid complicated escaping in innerHTML
       const img = document.createElement('img');
       img.className = 'person-avatar';
-      img.src = 'img/' + p.id + '.png';
+      // prefer filename matching the display name (capitalized), e.g. Alice.png
+      img.src = 'img/' + encodeURIComponent(p.name) + '.png';
       img.alt = p.name;
-      img.onerror = function(){ this.style.opacity = 0.6; this.style.background = '#ddd'; };
+      img.onerror = function(){
+        // try fallback to lowercase id filename once
+        if(!this._triedFallback){
+          this._triedFallback = true;
+          this.src = 'img/' + p.id + '.png';
+          return;
+        }
+        this.style.opacity = 0.6;
+        this.style.background = '#ddd';
+      };
       const nameDiv = document.createElement('div');
       nameDiv.className = 'person-name';
       nameDiv.textContent = p.name;

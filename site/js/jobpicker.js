@@ -150,7 +150,8 @@
     // 1% chance to be lucky (no job) - handled separately from the job pool
     let chosenA = null;
     let chosenB = null;
-    const isLucky = Math.random() < 0.01;
+    const isLucky = Math.random() < 0.005;
+    let isBonus = false;
     if(isLucky){
       // show no bonus notice for lucky
       qs('#bonusNotice').classList.add('hidden');
@@ -158,7 +159,7 @@
     } else {
       // Decide if bonus occurs (10%) - only if at least 2 jobs are available
       const bonusRoll = Math.random();
-      const isBonus = (bonusRoll < 0.10) && jobs.length >= 2;
+      isBonus = (bonusRoll < 0.10) && jobs.length >= 2;
       if(isBonus) qs('#bonusNotice').classList.remove('hidden'); else qs('#bonusNotice').classList.add('hidden');
 
       if(isBonus){
@@ -190,6 +191,7 @@
 
   function revealResults(isBonus, a, b){
     const spinner = qs('#spinner');
+    console.log('revealResults', {isBonus, a, b});
     qs('#resultArea').classList.remove('hidden');
     if(isBonus){
       qs('#dualResult').classList.remove('hidden');
@@ -211,6 +213,7 @@
   }
 
   function acceptFinal(job){
+    console.log('acceptFinal', job);
     const personId = qs('#pickerPanel').dataset.person;
     const history = loadHistory();
     history.unshift({person:personId, job:job.title, desc:job.desc, id:job.id, ts: new Date().toISOString()});

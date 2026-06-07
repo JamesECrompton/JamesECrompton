@@ -10,13 +10,29 @@
   // Jobs with name, description and applicability
   const jobBank = [
     {id:'wash_windows', title:'Wash Windows', desc:'Windex windows near front door, art room exit and dining area overseeing pool.', applies:['alice','lucy','matilda']},
-    {id:'laundry', title:'Laundry', desc:'Add a load to the washer, move to dryer and fold a load then put away.', applies:['alice','lucy']},
+    {id:'laundry', title:'Laundry', desc:'Add a load to the washer, move to dryer and fold a load then put away.', applies:['alice','lucy', 'matilda']},
     {id:'scrub_walls', title:'Scrub Walls', desc:'Use Magic Eraser on Walls to clean marker.', applies:['eloise','matilda']},
-    {id:'take_out_trash', title:'Take out trash', desc:'Gather trash from all rooms and reline.', applies:['matilda','alice']},
-    {id:'clean_sam_cars', title:'Clean Sam Cars', desc:'Scrub Play Cars outside washing with hose and scrubbing clean.', applies:['alice','lucy']},
+      { id: 'take_out_trash', title: 'Take out trash', desc: 'Gather trash from all rooms and reline.', applies: ['matilda', 'alice'] },
+      { id: 'purple_table_clean', title: 'Clean Purple Table', desc: 'Cleanup Purple Table and Area.', applies: ['matilda', 'eloise'] },
+      { id: 'art_room_clean', title: 'Clean Art Room', desc: 'Cleanup art room.', applies: ['eloise', 'lucy'] },
+      { id: 'gather_trash_outside', title: 'Gather Outside Trash', desc: 'Find 4 pieces of trash outside and throw away.', applies: ['eloise', 'matilda'] },
+      { id: 'clean_sam_cars', title: 'Clean Sam Cars', desc: 'Scrub Play Cars outside washing with hose and scrubbing clean.', applies: ['alice', 'lucy'] },
+      { id: 'organize_game_shelf', title: 'Organize Game Shelf', desc: 'Straighten One Shelf (4-8 games) on the Game Shelf.', applies: ['alice'] },
     {id:'pinecones', title:'Pinecones', desc:'Cleanup 25 pinecones.', applies:['alice','lucy','matilda','eloise']},
-    {id:'box_breakdown', title:'Box Breakdown', desc:'Break down 10 boxes and put in recycle.', applies:['alice','lucy']},
-    {id:'lucky', title:'Lucky', desc:'Lucky no Job :-)', applies:['alice','lucy','matilda','eloise']},
+    { id: 'box_breakdown', title: 'Box Breakdown', desc: 'Break down 10 boxes and put in recycle.', applies: ['alice', 'lucy'] },
+      { id: 'sweep_stairs', title: 'Sweep Stairs', desc: 'Sweep both sets of stairs.', applies: ['alice', 'lucy'] },
+      { id: 'water_flowers', title: 'Water Flowers', desc: 'Water Flowers outside front and back.', applies: ['alice', 'lucy', 'matilda'] },
+      { id: 'car_clean', title: 'Pickup Car Trash', desc: 'Pickup 10 pieces of trash from car.', applies: ['matilda', 'eloise'] },
+      { id: 'trash_small', title: 'Empty Trash Can', desc: 'Empty 2 trash cans and reline.', applies: ['eloise'] },
+      { id: 'trash_med', title: 'Empty Trash Can', desc: 'Empty 4 trash cans and reline.', applies: ['alice', 'lucy', 'matilda'] },
+      { id: 'dishwasher', title: 'Dishwasher', desc: 'Unload and load the dishwasher.', applies: ['alice', 'lucy', 'matilda'] },
+      { id: 'fridge_shelves', title: 'Fridge Shelves', desc: 'Wipe the fridge shelves.', applies: ['alice', 'lucy'] },
+      { id: 'dinner', title: 'Help Make Dinner', desc: 'Help Mom Make Dinner.', applies: ['alice', 'lucy', 'matilda', 'eloise'] },
+      { id: 'living_room', title: 'Living Room Floor', desc: 'Sweep and Swiffer the living room floor.', applies: ['alice', 'lucy'] },
+      { id: 'toy_pickup', title: 'Pickup Toys', desc: 'Pick up and put away 20 toys.', applies: ['alice', 'lucy', 'matilda', 'eloise'] },
+      { id: 'leafblow_pool', title: 'Leafblow Pool', desc: 'Leafblow around the pool and throw out yard waste.', applies: ['alice', 'lucy'] },
+      { id: 'toilets', title: 'Clean Toilets', desc: 'Clean 2 toilets.', applies: ['alice', 'lucy', 'matilda'] },
+    { id: 'piano', title: 'Wipe Piano', desc: 'Wipe and Dust Piano and put things away.', applies: ['lucy', 'matilda', 'eloise'] }
   ];
 
   const useLocalStorage = (function(){
@@ -100,14 +116,28 @@
   }
 
   function filterJobsFor(personId){
-    return jobBank.filter(j => j.applies.includes(personId));
+    // Exclude jobs assigned within the last 24 hours (across all people)
+    const allHistory = loadHistory();
+    const cutoff = Date.now() - (24*60*60*1000);
+    const recentAssigned = new Set(allHistory.filter(h => {
+      try{ return new Date(h.ts).getTime() >= cutoff }catch(e){return false}
+    }).map(h => h.id || h.job));
+    return jobBank.filter(j => j.applies.includes(personId) && !recentAssigned.has(j.id));
+  }
+
+  function showNotice(html, isError){
+    const notice = qs('#assignmentNotice');
+    if(!notice) return;
+    notice.innerHTML = html;
+    if(isError){ notice.classList.add('notice-error'); } else { notice.classList.remove('notice-error'); }
+    notice.classList.remove('hidden');
   }
 
   function spinAndPick(){
     const personId = qs('#pickerPanel').dataset.person;
     if(!personId) return;
     const jobs = filterJobsFor(personId);
-    if(jobs.length===0){ const name = (people.find(p=>p.id===personId)||{name:personId}).name; alert('No jobs defined for ' + name); return }
+    if(jobs.length===0){ const name = (people.find(p=>p.id===personId)||{name:personId}).name; showNotice('No available jobs for ' + escapeHtml(name) + ' right now (jobs already assigned today).', true); return }
 
     // animation: incremental text spinner
     const spinner = qs('#spinner');
@@ -117,26 +147,31 @@
     let ticker = 0;
     const ran = () => Math.floor(Math.random()*jobs.length);
 
-    // Decide if bonus occurs. Bonus choices must NOT include the 'lucky' job.
-    const bonusRoll = Math.random();
-    const eligibleForBonus = jobs.filter(j => j.id !== 'lucky');
-    const isBonus = (bonusRoll < 0.10) && eligibleForBonus.length >= 2; // 10% chance but only if >=2 non-lucky jobs
-    if(isBonus) qs('#bonusNotice').classList.remove('hidden'); else qs('#bonusNotice').classList.add('hidden');
-
-    // choose results in advance
+    // 1% chance to be lucky (no job) - handled separately from the job pool
     let chosenA = null;
     let chosenB = null;
-    if(isBonus){
-      // pick two distinct random jobs from eligibleForBonus
-      const aIdx = Math.floor(Math.random()*eligibleForBonus.length);
-      // pick b from remaining indices
-      let bIdx = Math.floor(Math.random()*(eligibleForBonus.length-1));
-      if(bIdx >= aIdx) bIdx += 1;
-      chosenA = eligibleForBonus[aIdx];
-      chosenB = eligibleForBonus[bIdx];
+    const isLucky = Math.random() < 0.01;
+    if(isLucky){
+      // show no bonus notice for lucky
+      qs('#bonusNotice').classList.add('hidden');
+      chosenA = {id:'lucky', title:'Lucky', desc:'Lucky no Job :-)'};
     } else {
-      // single pick may include 'lucky'
-      chosenA = jobs[ran()];
+      // Decide if bonus occurs (10%) - only if at least 2 jobs are available
+      const bonusRoll = Math.random();
+      const isBonus = (bonusRoll < 0.10) && jobs.length >= 2;
+      if(isBonus) qs('#bonusNotice').classList.remove('hidden'); else qs('#bonusNotice').classList.add('hidden');
+
+      if(isBonus){
+        // pick two distinct random jobs from the available jobs
+        const aIdx = Math.floor(Math.random()*jobs.length);
+        let bIdx = Math.floor(Math.random()*(jobs.length-1));
+        if(bIdx >= aIdx) bIdx += 1;
+        chosenA = jobs[aIdx];
+        chosenB = jobs[bIdx];
+      } else {
+        // single pick from available jobs
+        chosenA = jobs[ran()];
+      }
     }
 
     const tick = () => {
@@ -147,7 +182,7 @@
         return;
       }
       // show random job title to create suspense
-      spinner.textContent = jobs[Math.floor(Math.random()*jobs.length)].title + '...';
+      spinner.textContent = jobs.length ? jobs[Math.floor(Math.random()*jobs.length)].title + '...' : 'Ready?';
     };
     tick();
     ticker = setInterval(tick, 80);
@@ -200,14 +235,60 @@
     const panel = qs('#pickerPanel');
     const personFilter = panel && panel.dataset && panel.dataset.person ? panel.dataset.person : null;
     const hist = personFilter ? all.filter(h => h.person === personFilter) : all;
-    // newest first
-    hist.forEach((h, idx) =>{
-      const d = document.createElement('div');
-      d.className = 'history-item' + (idx===0 ? ' assigned' : '');
-      d.innerHTML = '<strong>'+escapeHtml((people.find(p=>p.id===h.person)||{name:h.person}).name) + '</strong> — ' + escapeHtml(new Date(h.ts).toLocaleString()) + ': <em>' + escapeHtml(h.job) + '</em>' + (h.desc ? '<div class="small">' + escapeHtml(h.desc) + '</div>' : '');
-      target.appendChild(d);
-    })
-    // ensure newest is visible at top
+
+    if(hist.length === 0){
+      target.innerHTML = '<div class="small">No history yet.</div>';
+      return;
+    }
+
+    // anchor week start: 2026-06-07
+    const anchor = new Date(2026, 5, 7); // months are 0-based (5 = June)
+    const weekMs = 7*24*60*60*1000;
+
+    // group entries by week index (number of weeks since anchor)
+    const weeks = new Map();
+    hist.forEach(h => {
+      let t = Date.parse(h.ts);
+      if(isNaN(t)) return;
+      // compute week index; allow negative indices if before anchor
+      const idx = Math.floor((t - anchor.getTime()) / weekMs);
+      if(!weeks.has(idx)) weeks.set(idx, []);
+      weeks.get(idx).push(h);
+    });
+
+    // sort week indices newest-first
+    const sortedIdx = Array.from(weeks.keys()).sort((a,b) => b - a);
+
+    sortedIdx.forEach(idx => {
+      const entries = weeks.get(idx);
+      // compute week start and end display
+      const startMs = anchor.getTime() + idx * weekMs;
+      const endMs = startMs + (7*24*60*60*1000) - 1;
+      const startDate = new Date(startMs);
+      const endDate = new Date(endMs);
+      const header = document.createElement('div'); header.className = 'week';
+      const hdrInner = document.createElement('div'); hdrInner.className = 'week-header';
+      const range = document.createElement('div'); range.className = 'range';
+      range.textContent = startDate.toLocaleDateString('en-US') + ' → ' + endDate.toLocaleDateString('en-US');
+      const totalDiv = document.createElement('div'); totalDiv.className = 'total';
+      // compute total dollars for this week for the selected person (or overall if no filter)
+      const total = entries.length; // $1 per job
+      totalDiv.textContent = (personFilter ? ('$' + total) : ('$' + total));
+      hdrInner.appendChild(range);
+      hdrInner.appendChild(totalDiv);
+      header.appendChild(hdrInner);
+
+      // sort entries newest-first by timestamp
+      entries.sort((a,b) => new Date(b.ts) - new Date(a.ts));
+      entries.forEach(e => {
+        const item = document.createElement('div'); item.className = 'history-entry';
+        item.innerHTML = '<strong>'+escapeHtml((people.find(p=>p.id===e.person)||{name:e.person}).name) + '</strong> — ' + escapeHtml(new Date(e.ts).toLocaleString()) + ': <em>' + escapeHtml(e.job) + '</em>' + (e.desc ? '<div class="small">' + escapeHtml(e.desc) + '</div>' : '');
+        header.appendChild(item);
+      });
+
+      target.appendChild(header);
+    });
+    // ensure newest week visible at top
     if(target.firstChild) target.scrollTop = 0;
   }
 
